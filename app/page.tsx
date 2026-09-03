@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { classNoteCategories } from './classNotes';
 import { moreWordCategories } from './moreWords';
+import { verbFormExplanations, verbForms, verbTypes } from './verbLessons';
 
 type Word = { word: string; split: string; tamilSound: string; tamil: string; meaning: string; kind: string; emoji: string; examples: [string, string][] };
 type Category = { id: string; name: string; tamil: string; emoji: string; color: string; section?: 'class-notes'; words: Word[] };
@@ -129,7 +130,7 @@ function speak(text: string, slow = false) {
 }
 
 export default function Home() {
-  const [view, setView] = useState<'home' | 'lesson' | 'quiz' | 'cheatsheet'>('home');
+  const [view, setView] = useState<'home' | 'lesson' | 'quiz' | 'cheatsheet' | 'verb-lesson'>('home');
   const [categoryId, setCategoryId] = useState('food');
   const [wordIndex, setWordIndex] = useState(0);
   const [learned, setLearned] = useState<string[]>([]);
@@ -138,6 +139,7 @@ export default function Home() {
   const [speechFeedback, setSpeechFeedback] = useState('');
   const [quizFeedback, setQuizFeedback] = useState('');
   const [cheatQuery, setCheatQuery] = useState('');
+  const [verbQuery, setVerbQuery] = useState('');
   const [lessonOrigin, setLessonOrigin] = useState<'home' | 'cheatsheet'>('home');
   const cheatScrollPosition = useRef(0);
   useEffect(() => { try { setLearned(JSON.parse(localStorage.getItem('vanakkam-learned') || '[]')); setLargeText(localStorage.getItem('vanakkam-large-text') === 'true'); } catch { setLearned([]); } setLoaded(true); }, []);
@@ -176,6 +178,23 @@ export default function Home() {
         <label className="cheatsheet-search"><span>🔎</span><input value={cheatQuery} onChange={(event) => setCheatQuery(event.target.value)} placeholder="Search English or Tamil · ஆங்கிலம் அல்லது தமிழில் தேடுங்கள்" aria-label="Search the cheat sheet" />{cheatQuery && <button onClick={() => setCheatQuery('')} aria-label="Clear search">×</button>}</label>
         <div className="cheatsheet-summary"><b>{filtered.reduce((sum, item) => sum + item.words.length, 0)}</b><span>பொருந்தும் சொற்கள் · matching words</span></div>
         {filtered.length ? <div className="cheatsheet-groups">{filtered.map((item) => <section className="cheatsheet-group" key={item.id} style={{ '--accent': item.color } as React.CSSProperties}><header><span>{item.emoji}</span><div><h2>{item.name}</h2><p>{item.tamil}</p></div><small>{item.words.length}</small></header><div className="cheatsheet-words">{item.words.map(({ entry, index }) => <div className="cheatsheet-word" key={`${item.id}:${entry.word}`}><button className="cheatsheet-speak" onClick={() => speak(entry.word)} aria-label={`Speak ${entry.word} in English`}>🔊</button><button className="cheatsheet-open" onClick={() => openCheatWord(item.id, index)}><b>{entry.word}</b><span>{entry.tamil}</span><i>→</i></button></div>)}</div></section>)}</div> : <div className="cheatsheet-empty"><span>🔎</span><b>வார்த்தை கிடைக்கவில்லை</b><p>No matching word found. Try another spelling.</p></div>}
+      </section>
+    </main>;
+  }
+
+  if (view === 'verb-lesson') {
+    const query = verbQuery.trim().toLocaleLowerCase();
+    const filteredVerbs = verbForms.filter((entry) => !query || Object.values(entry).join(' ').toLocaleLowerCase().includes(query));
+    return <main className={`app-shell verb-lesson-shell ${largeText ? 'large-text' : ''}`}>
+      <header className="topbar home-topbar"><button className="brand" onClick={() => setView('home')}><span className="brand-mark">வ</span><span><b>வணக்கம் English</b><small>வினைச்சொல் பாடம் · Verb Lesson</small></span></button><button className="home-button" onClick={() => setView('home')}>⌂ <span>முகப்பு</span></button></header>
+      <section className="verb-lesson-hero"><span className="verb-lesson-icon">📚</span><div><span className="eyebrow">பாடம் · LESSON</span><h1>வினைச்சொற்கள் <em>· Verbs</em></h1><p>வினைச்சொற்களின் வகைகள், V1 முதல் V5 வரை அவை எப்படி மாறுகின்றன, தமிழ் விளக்கம் மற்றும் பொதுவான சொற்களின் அட்டவணை.</p></div></section>
+
+      <section className="verb-lesson-section"><div className="section-heading"><div><span className="eyebrow">முதலில் இதைத் தெரிந்துகொள்வோம்</span><h2>வினைச்சொல் வகைகள் <em>· Types of Verbs</em></h2></div><span>{verbTypes.length} முக்கிய வகைகள்</span></div><div className="verb-type-grid">{verbTypes.map((type) => <article className="verb-type-card" key={type.name}><span className="verb-type-icon">{type.emoji}</span><div><h3>{type.tamil}</h3><h4>{type.name}</h4><p>{type.explanation}</p><div className="verb-example"><button onClick={() => speak(type.example, true)} aria-label={`Listen to ${type.example}`}>🔊</button><span><b>{type.example}</b><small>{type.exampleTamil}</small></span></div></div></article>)}</div></section>
+
+      <section className="verb-lesson-section verb-forms-explanation"><div className="section-heading"><div><span className="eyebrow">V1 முதல் V5 வரை</span><h2>ஒவ்வொரு வடிவமும் எப்படி வேலை செய்கிறது?</h2></div><span>How verb forms work</span></div><div className="verb-form-cards">{verbFormExplanations.map((item) => <article className="verb-form-card" key={item.form}><span>{item.form}</span><h3>{item.tamil}</h3><h4>{item.name}</h4><p>{item.rule}</p><button onClick={() => speak(item.example.replaceAll('·', '. '), true)}>🔊 {item.example}</button></article>)}</div></section>
+
+      <section className="verb-lesson-section verb-table-section"><div className="section-heading"><div><span className="eyebrow">படித்து, கேட்டு, பயிற்சி செய்யுங்கள்</span><h2>வினைச்சொல் அட்டை <em>· V1–V5 Cheat Table</em></h2></div><span>{verbForms.length} பொதுவான வினைச்சொற்கள்</span></div><label className="cheatsheet-search verb-search"><span>🔎</span><input value={verbQuery} onChange={(event) => setVerbQuery(event.target.value)} placeholder="Search verb or Tamil meaning · வினைச்சொல் அல்லது தமிழ் பொருள்" aria-label="Search the verb table" />{verbQuery && <button onClick={() => setVerbQuery('')} aria-label="Clear search">×</button>}</label><div className="verb-table-count"><b>{filteredVerbs.length}</b> பொருந்தும் வினைச்சொற்கள் · matching verbs</div>
+        {filteredVerbs.length ? <div className="verb-table-wrap"><table className="verb-table"><thead><tr><th>தமிழ் பொருள்<br/><small>Tamil Meaning</small></th><th>V1<br/><small>Base</small></th><th>V2<br/><small>Past</small></th><th>V3<br/><small>Past Participle</small></th><th>V4<br/><small>-ing</small></th><th>V5<br/><small>s / es</small></th></tr></thead><tbody>{filteredVerbs.map((entry) => <tr key={entry.v1}><th>{entry.tamil}</th>{([entry.v1, entry.v2, entry.v3, entry.v4, entry.v5] as string[]).map((form, index) => <td key={`${entry.v1}:${index}`}><button onClick={() => speak(form, true)} aria-label={`Speak ${form}`}><span>🔊</span>{form}</button></td>)}</tr>)}</tbody></table></div> : <div className="cheatsheet-empty"><span>🔎</span><b>வினைச்சொல் கிடைக்கவில்லை</b><p>No matching verb found. Try another spelling.</p></div>}
       </section>
     </main>;
   }
@@ -221,6 +240,7 @@ export default function Home() {
     <section className="progress-strip"><div><span className="progress-icon">🌱</span><p><small>மொத்த முன்னேற்றம்</small><b>{loaded ? learned.length : 0} <span>/ 500 வார்த்தைகள்</span></b></p></div><div className="wide-progress"><i style={{ width: `${progress}%` }} /></div><p className="encouragement">{learned.length ? 'அருமையான முன்னேற்றம்!' : 'முதல் வார்த்தையிலிருந்து தொடங்கலாம்!'}<small>{learned.length ? 'Wonderful progress!' : 'Let’s begin with the first word!'}</small></p></section>
     <section className="categories-section"><div className="section-heading"><div><span className="eyebrow">உங்களுக்கு பிடித்த தலைப்பை தேர்ந்தெடுங்கள்</span><h2>வகைகள் <em>· Categories</em></h2></div><span>{totalWords} பாடங்கள் தயாராக உள்ளன</span></div><div className="category-grid">{everydayCategories.map(categoryCard)}</div></section>
     <section className="categories-section class-notes-section"><div className="section-heading"><div><span className="eyebrow">Google Chat வகுப்பிலிருந்து தொகுக்கப்பட்டது</span><h2>வகுப்பு குறிப்புகள் <em>· Class Notes</em></h2></div><span>{classCategories.reduce((sum, item) => sum + item.words.length, 0)} வகுப்புப் பாடங்கள்</span></div><p className="class-notes-intro">தினசரி வகுப்புக் குறிப்புகள் தலைப்பு வாரியாக ஒழுங்குபடுத்தப்பட்டுள்ளன. ஒவ்வொரு பாடத்தையும் கேட்டு, படித்து, உதாரணங்களுடன் பயிற்சி செய்யுங்கள்.</p><div className="category-grid">{classCategories.map(categoryCard)}</div></section>
+    <section className="categories-section lesson-category-section"><div className="section-heading"><div><span className="eyebrow">இலக்கணத்தை எளிதாகக் கற்போம்</span><h2>பாடம் <em>· Lesson</em></h2></div><span>தமிழ் விளக்கத்துடன்</span></div><p className="class-notes-intro">வினைச்சொற்களின் வகைகள் மற்றும் V1 முதல் V5 வரை ஒவ்வொரு வடிவமும் எப்போது பயன்படுத்தப்படுகிறது என்பதைத் தமிழில் கற்றுக்கொள்ளுங்கள்.</p><button className="lesson-category-card" onClick={() => { setView('verb-lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span className="lesson-category-icon">📚</span><span className="lesson-category-copy"><strong>வினைச்சொல் வடிவங்கள்</strong><b>Verb Forms · V1 to V5</b><small>{verbTypes.length} types · {verbForms.length} verbs · தமிழ் விளக்கம்</small></span><span className="lesson-category-arrow">→</span></button></section>
     <footer><span>வணக்கம் English</span><p>மெதுவாக கற்போம். நம்பிக்கையுடன் பேசுவோம்.</p><small>Learn gently. Speak confidently.</small></footer>
   </main>;
 }
