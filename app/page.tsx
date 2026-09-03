@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { classNoteCategories } from './classNotes';
+import { moreWordCategories } from './moreWords';
 
 type Word = { word: string; split: string; tamilSound: string; tamil: string; meaning: string; kind: string; emoji: string; examples: [string, string][] };
 type Category = { id: string; name: string; tamil: string; emoji: string; color: string; section?: 'class-notes'; words: Word[] };
@@ -116,6 +117,7 @@ const categories: Category[] = [
     { word: 'Must', split: 'Must', tamilSound: 'மஸ்ட்', tamil: 'கட்டாயம் வேண்டும்', meaning: 'Shows that something is necessary or very important.', kind: 'Modal helping verb', emoji: '❗', examples: [['You must be careful.', 'நீங்கள் கட்டாயம் கவனமாக இருக்க வேண்டும்.'], ['We must go now.', 'நாம் இப்போது கட்டாயம் செல்ல வேண்டும்.'], ['I must finish this.', 'நான் இதைக் கட்டாயம் முடிக்க வேண்டும்.']] },
   ]},
   ...classNoteCategories,
+  ...moreWordCategories,
 ];
 
 function speak(text: string, slow = false) {
@@ -173,7 +175,7 @@ export default function Home() {
       <section className="cheatsheet-wrap"><div className="cheatsheet-heading"><span className="cheatsheet-icon">⚡</span><div><span className="eyebrow">விரைவாகத் தேடுங்கள் · FIND IT FAST</span><h1>சொல் அட்டை <em>· Cheat Sheet</em></h1><p>English word + தமிழ் பொருள். முழுப் பாடத்தைத் திறக்க எந்த வார்த்தையையும் அழுத்துங்கள்.</p></div></div>
         <label className="cheatsheet-search"><span>🔎</span><input value={cheatQuery} onChange={(event) => setCheatQuery(event.target.value)} placeholder="Search English or Tamil · ஆங்கிலம் அல்லது தமிழில் தேடுங்கள்" aria-label="Search the cheat sheet" />{cheatQuery && <button onClick={() => setCheatQuery('')} aria-label="Clear search">×</button>}</label>
         <div className="cheatsheet-summary"><b>{filtered.reduce((sum, item) => sum + item.words.length, 0)}</b><span>பொருந்தும் சொற்கள் · matching words</span></div>
-        {filtered.length ? <div className="cheatsheet-groups">{filtered.map((item) => <section className="cheatsheet-group" key={item.id} style={{ '--accent': item.color } as React.CSSProperties}><header><span>{item.emoji}</span><div><h2>{item.name}</h2><p>{item.tamil}</p></div><small>{item.words.length}</small></header><div className="cheatsheet-words">{item.words.map(({ entry, index }) => <button key={`${item.id}:${entry.word}`} onClick={() => openCheatWord(item.id, index)}><b>{entry.word}</b><span>{entry.tamil}</span><i>→</i></button>)}</div></section>)}</div> : <div className="cheatsheet-empty"><span>🔎</span><b>வார்த்தை கிடைக்கவில்லை</b><p>No matching word found. Try another spelling.</p></div>}
+        {filtered.length ? <div className="cheatsheet-groups">{filtered.map((item) => <section className="cheatsheet-group" key={item.id} style={{ '--accent': item.color } as React.CSSProperties}><header><span>{item.emoji}</span><div><h2>{item.name}</h2><p>{item.tamil}</p></div><small>{item.words.length}</small></header><div className="cheatsheet-words">{item.words.map(({ entry, index }) => <div className="cheatsheet-word" key={`${item.id}:${entry.word}`}><button className="cheatsheet-speak" onClick={() => speak(entry.word)} aria-label={`Speak ${entry.word} in English`}>🔊</button><button className="cheatsheet-open" onClick={() => openCheatWord(item.id, index)}><b>{entry.word}</b><span>{entry.tamil}</span><i>→</i></button></div>)}</div></section>)}</div> : <div className="cheatsheet-empty"><span>🔎</span><b>வார்த்தை கிடைக்கவில்லை</b><p>No matching word found. Try another spelling.</p></div>}
       </section>
     </main>;
   }
