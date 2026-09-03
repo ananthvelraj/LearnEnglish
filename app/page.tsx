@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { classNoteCategories } from './classNotes';
 
 type Word = { word: string; split: string; tamilSound: string; tamil: string; meaning: string; kind: string; emoji: string; examples: [string, string][] };
@@ -127,7 +127,7 @@ function speak(text: string, slow = false) {
 }
 
 export default function Home() {
-  const [view, setView] = useState<'home' | 'lesson' | 'quiz'>('home');
+  const [view, setView] = useState<'home' | 'lesson' | 'quiz' | 'cheatsheet'>('home');
   const [categoryId, setCategoryId] = useState('food');
   const [wordIndex, setWordIndex] = useState(0);
   const [learned, setLearned] = useState<string[]>([]);
@@ -135,6 +135,9 @@ export default function Home() {
   const [largeText, setLargeText] = useState(false);
   const [speechFeedback, setSpeechFeedback] = useState('');
   const [quizFeedback, setQuizFeedback] = useState('');
+  const [cheatQuery, setCheatQuery] = useState('');
+  const [lessonOrigin, setLessonOrigin] = useState<'home' | 'cheatsheet'>('home');
+  const cheatScrollPosition = useRef(0);
   useEffect(() => { try { setLearned(JSON.parse(localStorage.getItem('vanakkam-learned') || '[]')); setLargeText(localStorage.getItem('vanakkam-large-text') === 'true'); } catch { setLearned([]); } setLoaded(true); }, []);
   const category = categories.find((item) => item.id === categoryId) || categories[0];
   const word = category.words[wordIndex] || category.words[0];
@@ -145,9 +148,12 @@ export default function Home() {
   const learnedInCategory = useMemo(() => category.words.filter((item) => learned.includes(`${category.id}:${item.word}`)).length, [category, learned]);
   void learnedInCategory;
 
-  const openCategory = (id: string) => { const nextCategory = categories.find((item) => item.id === id)!; const firstNew = nextCategory.words.findIndex((item) => !learned.includes(`${id}:${item.word}`)); setCategoryId(id); setWordIndex(firstNew < 0 ? 0 : firstNew); setView('lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const openCategory = (id: string) => { const nextCategory = categories.find((item) => item.id === id)!; const firstNew = nextCategory.words.findIndex((item) => !learned.includes(`${id}:${item.word}`)); setLessonOrigin('home'); setCategoryId(id); setWordIndex(firstNew < 0 ? 0 : firstNew); setView('lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const openCheatSheet = () => { setView('cheatsheet'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const openCheatWord = (id: string, index: number) => { cheatScrollPosition.current = window.scrollY; setLessonOrigin('cheatsheet'); setCategoryId(id); setWordIndex(index); setSpeechFeedback(''); setView('lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const returnFromLesson = () => { if (lessonOrigin === 'cheatsheet') { setView('cheatsheet'); requestAnimationFrame(() => window.scrollTo({ top: cheatScrollPosition.current, behavior: 'auto' })); } else { setView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
   const toggleLearned = () => { const key = `${category.id}:${word.word}`; const next = learned.includes(key) ? learned.filter((item) => item !== key) : [...learned, key]; setLearned(next); localStorage.setItem('vanakkam-learned', JSON.stringify(next)); };
-  const nextWord = () => { if (wordIndex === 4) { setQuizFeedback(''); setView('quiz'); } else if (wordIndex < category.words.length - 1) setWordIndex(wordIndex + 1); else setView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const nextWord = () => { if (wordIndex === 4 && lessonOrigin === 'home') { setQuizFeedback(''); setView('quiz'); } else if (wordIndex < category.words.length - 1) setWordIndex(wordIndex + 1); else returnFromLesson(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const toggleTextSize = () => { const next = !largeText; setLargeText(next); localStorage.setItem('vanakkam-large-text', String(next)); };
   const categoryCard = (item: Category) => { const count = item.words.filter((entry) => learned.includes(`${item.id}:${entry.word}`)).length; return <button className="category-card" style={{ '--accent': item.color } as React.CSSProperties} key={item.id} onClick={() => openCategory(item.id)}><span className="category-emoji">{item.emoji}</span><span className="category-copy"><strong>{item.tamil}</strong><b>{item.name}</b><small>{item.words.length} {item.section ? 'பாடங்கள்' : 'வார்த்தைகள்'} · {count} முடிந்தது</small></span><span className="category-arrow">→</span><span className="category-progress"><i style={{ width: `${(count / item.words.length) * 100}%` }} /></span></button>; };
   const practiceSpeech = () => {
@@ -158,6 +164,19 @@ export default function Home() {
     recognition.onresult = (event) => { const heard = event.results[0][0].transcript.toLowerCase().trim(); setSpeechFeedback(heard.includes(word.word.toLowerCase()) ? 'மிக நன்று! சரியாகச் சொன்னீர்கள்! ✓' : `“${heard}” என்று கேட்டது. இன்னும் ஒருமுறை முயற்சி செய்யலாம்.`); };
     recognition.onerror = () => setSpeechFeedback('பரவாயில்லை. கேட்டு இன்னும் ஒருமுறை முயற்சி செய்யுங்கள்.'); recognition.start();
   };
+
+  if (view === 'cheatsheet') {
+    const query = cheatQuery.trim().toLocaleLowerCase();
+    const filtered = categories.map((item) => ({ ...item, words: item.words.map((entry, index) => ({ entry, index })).filter(({ entry }) => !query || `${entry.word} ${entry.tamil} ${entry.kind}`.toLocaleLowerCase().includes(query)) })).filter((item) => item.words.length);
+    return <main className={`app-shell cheatsheet-shell ${largeText ? 'large-text' : ''}`}>
+      <header className="topbar home-topbar"><button className="brand" onClick={() => setView('home')}><span className="brand-mark">வ</span><span><b>வணக்கம் English</b><small>விரைவு சொல் அட்டை · Quick Cheat Sheet</small></span></button><button className="home-button" onClick={() => setView('home')}>⌂ <span>முகப்பு</span></button></header>
+      <section className="cheatsheet-wrap"><div className="cheatsheet-heading"><span className="cheatsheet-icon">⚡</span><div><span className="eyebrow">விரைவாகத் தேடுங்கள் · FIND IT FAST</span><h1>சொல் அட்டை <em>· Cheat Sheet</em></h1><p>English word + தமிழ் பொருள். முழுப் பாடத்தைத் திறக்க எந்த வார்த்தையையும் அழுத்துங்கள்.</p></div></div>
+        <label className="cheatsheet-search"><span>🔎</span><input value={cheatQuery} onChange={(event) => setCheatQuery(event.target.value)} placeholder="Search English or Tamil · ஆங்கிலம் அல்லது தமிழில் தேடுங்கள்" aria-label="Search the cheat sheet" />{cheatQuery && <button onClick={() => setCheatQuery('')} aria-label="Clear search">×</button>}</label>
+        <div className="cheatsheet-summary"><b>{filtered.reduce((sum, item) => sum + item.words.length, 0)}</b><span>பொருந்தும் சொற்கள் · matching words</span></div>
+        {filtered.length ? <div className="cheatsheet-groups">{filtered.map((item) => <section className="cheatsheet-group" key={item.id} style={{ '--accent': item.color } as React.CSSProperties}><header><span>{item.emoji}</span><div><h2>{item.name}</h2><p>{item.tamil}</p></div><small>{item.words.length}</small></header><div className="cheatsheet-words">{item.words.map(({ entry, index }) => <button key={`${item.id}:${entry.word}`} onClick={() => openCheatWord(item.id, index)}><b>{entry.word}</b><span>{entry.tamil}</span><i>→</i></button>)}</div></section>)}</div> : <div className="cheatsheet-empty"><span>🔎</span><b>வார்த்தை கிடைக்கவில்லை</b><p>No matching word found. Try another spelling.</p></div>}
+      </section>
+    </main>;
+  }
 
   if (view === 'quiz') {
     const quizWord = category.words[4];
@@ -175,9 +194,9 @@ export default function Home() {
     const isLearned = learned.includes(`${category.id}:${word.word}`);
     return <main className={`app-shell lesson-shell ${largeText ? 'large-text' : ''}`}>
       <header className="topbar">
-        <button className="brand" onClick={() => setView('home')} aria-label="முகப்பு பக்கத்திற்குச் செல்லவும்"><span className="brand-mark">வ</span><span><b>வணக்கம் English</b><small>ஒவ்வொரு நாளும் ஒரு சிறிய முன்னேற்றம்</small></span></button>
+        <button className="brand" onClick={returnFromLesson} aria-label={lessonOrigin === 'cheatsheet' ? 'சொல் அட்டைக்குத் திரும்பவும்' : 'முகப்பு பக்கத்திற்குச் செல்லவும்'}><span className="brand-mark">வ</span><span><b>வணக்கம் English</b><small>ஒவ்வொரு நாளும் ஒரு சிறிய முன்னேற்றம்</small></span></button>
         <div className="lesson-progress"><span>{category.tamil}</span><div><i style={{ width: `${((wordIndex + 1) / category.words.length) * 100}%` }} /></div><b>{wordIndex + 1} / {category.words.length}</b></div>
-        <button className="home-button" onClick={() => setView('home')}>⌂ <span>முகப்பு</span></button>
+        <button className="home-button" onClick={returnFromLesson}>{lessonOrigin === 'cheatsheet' ? '←' : '⌂'} <span>{lessonOrigin === 'cheatsheet' ? 'சொல் அட்டை' : 'முகப்பு'}</span></button>
       </header>
       <section className="lesson-wrap">
         <div className="word-visual" aria-label={`Picture for ${word.word}`}><span className="picture-label">படம் · PICTURE</span><div className="big-emoji" role="img" aria-label={word.word}>{word.emoji}</div><span className="visual-word">{word.word}</span></div>
@@ -195,6 +214,7 @@ export default function Home() {
 
   return <main className={`app-shell ${largeText ? 'large-text' : ''}`}>
     <header className="topbar home-topbar"><div className="brand static"><span className="brand-mark">வ</span><span><b>வணக்கம் English</b><small>தமிழில் எளிதாக ஆங்கிலம் கற்போம்</small></span></div><div className="top-actions"><button aria-label="Text size" aria-pressed={largeText} onClick={toggleTextSize}>அ A</button><button aria-label="Test sound" onClick={() => speak('Welcome. Let us learn English.')}>🔊</button></div></header>
+    <section className="cheatsheet-launch-wrap"><button className="cheatsheet-launch" onClick={openCheatSheet}><span className="cheatsheet-launch-icon">⚡</span><span className="cheatsheet-launch-copy"><b>விரைவு சொல் அட்டை</b><strong>Quick Cheat Sheet</strong><small>{totalWords} English words + தமிழ் பொருள் · Tap any word for details</small></span><span className="cheatsheet-launch-arrow">→</span></button></section>
     <section className="welcome"><div><span className="eyebrow">வணக்கம்! இன்று கற்கத் தயாரா?</span><h1>சிறு சிறு வார்த்தைகள்.<br/><em>பெரிய தன்னம்பிக்கை.</em></h1><p>தினமும் 5 வார்த்தைகள் கற்போம். கேளுங்கள், படியுங்கள், நம்பிக்கையுடன் பேசுங்கள்.</p><button className="primary-cta" onClick={() => openCategory('food')}>இன்றைய பாடத்தை தொடங்குங்கள் <span>→</span><small>Start today’s lesson</small></button></div><div className="daily-card"><span className="sun">☀️</span><div><small>இன்றைய இலக்கு</small><b>5 வார்த்தைகள்</b><span>Daily goal</span></div><div className="goal-ring"><strong>{learned.length}</strong><span>/ 5</span></div></div></section>
     <section className="progress-strip"><div><span className="progress-icon">🌱</span><p><small>மொத்த முன்னேற்றம்</small><b>{loaded ? learned.length : 0} <span>/ 500 வார்த்தைகள்</span></b></p></div><div className="wide-progress"><i style={{ width: `${progress}%` }} /></div><p className="encouragement">{learned.length ? 'அருமையான முன்னேற்றம்!' : 'முதல் வார்த்தையிலிருந்து தொடங்கலாம்!'}<small>{learned.length ? 'Wonderful progress!' : 'Let’s begin with the first word!'}</small></p></section>
     <section className="categories-section"><div className="section-heading"><div><span className="eyebrow">உங்களுக்கு பிடித்த தலைப்பை தேர்ந்தெடுங்கள்</span><h2>வகைகள் <em>· Categories</em></h2></div><span>{totalWords} பாடங்கள் தயாராக உள்ளன</span></div><div className="category-grid">{everydayCategories.map(categoryCard)}</div></section>
