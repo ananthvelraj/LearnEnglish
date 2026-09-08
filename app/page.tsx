@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { classNoteCategories } from './classNotes';
 import { moreWordCategories } from './moreWords';
-import { verbFormExplanations, verbForms, verbTypes } from './verbLessons';
+import { verbFormExplanations, verbForms, verbTypes, type VerbForm } from './verbLessons';
 
 type Word = { word: string; split: string; tamilSound: string; tamil: string; meaning: string; kind: string; emoji: string; examples: [string, string][] };
 type Category = { id: string; name: string; tamil: string; emoji: string; color: string; section?: 'class-notes'; words: Word[] };
@@ -129,6 +129,19 @@ function speak(text: string, slow = false) {
   window.speechSynthesis.speak(utterance);
 }
 
+function getVerbExamples(entry: VerbForm): [string, string][] {
+  if (entry.examples) return entry.examples;
+  const tail = entry.exampleTail ? ` ${entry.exampleTail}` : '';
+  const tamilTail = entry.exampleTamil ? `${entry.exampleTamil} ` : '';
+  return [
+    [`I ${entry.v1}${tail}.`, `நான் ${tamilTail}${entry.tamilForms[0]}.`],
+    [`I ${entry.v2}${tail} yesterday.`, `நான் நேற்று ${tamilTail}${entry.tamilForms[1]}.`],
+    [`I have ${entry.v3}${tail} already.`, `நான் ஏற்கனவே ${tamilTail}${entry.tamilForms[2]}.`],
+    [`I am ${entry.v4}${tail} now.`, `நான் இப்போது ${tamilTail}${entry.tamilForms[3]}.`],
+    [`She ${entry.v5}${tail} every day.`, `அவள் தினமும் ${tamilTail}${entry.tamilForms[4]}.`],
+  ];
+}
+
 export default function Home() {
   const [view, setView] = useState<'home' | 'lesson' | 'quiz' | 'cheatsheet' | 'verb-lesson'>('home');
   const [categoryId, setCategoryId] = useState('food');
@@ -194,8 +207,12 @@ export default function Home() {
       <section className="verb-lesson-section verb-forms-explanation"><div className="section-heading"><div><span className="eyebrow">V1 முதல் V5 வரை</span><h2>ஒவ்வொரு வடிவமும் எப்படி வேலை செய்கிறது?</h2></div><span>How verb forms work</span></div><div className="verb-form-cards">{verbFormExplanations.map((item) => <article className="verb-form-card" key={item.form}><span>{item.form}</span><h3>{item.tamil}</h3><h4>{item.name}</h4><p>{item.rule}</p><button onClick={() => speak(item.example.replaceAll('·', '. '), true)}>🔊 {item.example}</button></article>)}</div></section>
 
       <section className="verb-lesson-section verb-table-section"><div className="section-heading"><div><span className="eyebrow">படித்து, கேட்டு, பயிற்சி செய்யுங்கள்</span><h2>வினைச்சொல் அட்டை <em>· V1–V5 Cheat Table</em></h2></div><span>{verbForms.length} பொதுவான வினைச்சொற்கள்</span></div><label className="cheatsheet-search verb-search"><span>🔎</span><input value={verbQuery} onChange={(event) => setVerbQuery(event.target.value)} placeholder="Search verb or Tamil meaning · வினைச்சொல் அல்லது தமிழ் பொருள்" aria-label="Search the verb table" />{verbQuery && <button onClick={() => setVerbQuery('')} aria-label="Clear search">×</button>}</label><div className="verb-table-count"><b>{filteredVerbs.length}</b> பொருந்தும் வினைச்சொற்கள் · matching verbs</div>
-        {filteredVerbs.length ? <div className="verb-table-wrap"><table className="verb-table"><thead><tr><th>தமிழ் பொருள்<br/><small>Tamil Meaning</small></th><th>V1<br/><small>Base</small></th><th>V2<br/><small>Past</small></th><th>V3<br/><small>Past Participle</small></th><th>V4<br/><small>-ing</small></th><th>V5<br/><small>s / es</small></th></tr></thead><tbody>{filteredVerbs.map((entry) => <tr key={entry.v1}><th>{entry.tamil}</th>{([entry.v1, entry.v2, entry.v3, entry.v4, entry.v5] as string[]).map((form, index) => <td key={`${entry.v1}:${index}`}><button onClick={() => speak(form, true)} aria-label={`Speak ${form}`}><span>🔊</span>{form}</button></td>)}</tr>)}</tbody></table></div> : <div className="cheatsheet-empty"><span>🔎</span><b>வினைச்சொல் கிடைக்கவில்லை</b><p>No matching verb found. Try another spelling.</p></div>}
+        {filteredVerbs.length ? <div className="verb-table-wrap"><table className="verb-table"><thead><tr><th>தமிழ் பொருள்<br/><small>Tamil Meaning</small></th><th>V1<br/><small>Base</small></th><th>V2<br/><small>Past</small></th><th>V3<br/><small>Past Participle</small></th><th>V4<br/><small>-ing</small></th><th>V5<br/><small>s / es</small></th></tr></thead><tbody>{filteredVerbs.map((entry) => <tr key={entry.v1}><th>{entry.tamil}</th>{([entry.v1, entry.v2, entry.v3, entry.v4, entry.v5] as string[]).map((form, index) => <td key={`${entry.v1}:${index}`}><button onClick={() => speak(form, true)} aria-label={`Speak ${form}`}><span>🔊</span><span className="verb-cell-copy"><b>{form}</b><small>{entry.tamilForms[index]}</small></span></button></td>)}</tr>)}</tbody></table></div> : <div className="cheatsheet-empty"><span>🔎</span><b>வினைச்சொல் கிடைக்கவில்லை</b><p>No matching verb found. Try another spelling.</p></div>}
       </section>
+
+      {filteredVerbs.length > 0 && <section className="verb-lesson-section verb-examples-section"><div className="section-heading"><div><span className="eyebrow">ஒவ்வொரு வடிவத்திற்கும் ஒரு வாக்கியம்</span><h2>V1–V5 உதாரணங்கள் <em>· Examples</em></h2></div><span>{filteredVerbs.length * 5} இருமொழி வாக்கியங்கள்</span></div><p className="verb-examples-intro">ஒவ்வொரு வினைச்சொல்லும் ஐந்து வடிவங்களிலும் எப்படி வாக்கியத்தில் வருகிறது என்பதை ஆங்கிலம் மற்றும் தமிழில் பார்க்கலாம்.</p><div className="verb-example-list">{filteredVerbs.map((entry) => <article className="verb-example-card" key={`examples:${entry.v1}`}><header><button onClick={() => speak(entry.v1)} aria-label={`Speak ${entry.v1}`}>🔊</button><div><h3>{entry.v1}</h3><p>{entry.tamil}</p></div></header><div>{getVerbExamples(entry).map(([english, tamil], index) => <div className="verb-example-row" key={`${entry.v1}:${index}`}><span>V{index + 1}</span><div><b>{english}</b><p>{tamil}</p></div><button onClick={() => speak(english, true)} aria-label={`Listen to ${english}`}>🔊</button></div>)}</div></article>)}</div>
+      </section>
+      }
     </main>;
   }
 
