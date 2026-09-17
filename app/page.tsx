@@ -155,7 +155,19 @@ export default function Home() {
   const [verbQuery, setVerbQuery] = useState('');
   const [lessonOrigin, setLessonOrigin] = useState<'home' | 'cheatsheet'>('home');
   const cheatScrollPosition = useRef(0);
-  useEffect(() => { try { setLearned(JSON.parse(localStorage.getItem('vanakkam-learned') || '[]')); setLargeText(localStorage.getItem('vanakkam-large-text') === 'true'); } catch { setLearned([]); } setLoaded(true); }, []);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        setLearned(JSON.parse(localStorage.getItem('vanakkam-learned') || '[]'));
+        setLargeText(localStorage.getItem('vanakkam-large-text') === 'true');
+      } catch {
+        setLearned([]);
+      }
+      setLoaded(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   const category = categories.find((item) => item.id === categoryId) || categories[0];
   const word = category.words[wordIndex] || category.words[0];
   const totalWords = categories.reduce((sum, item) => sum + item.words.length, 0);
