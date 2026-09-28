@@ -5,9 +5,10 @@ import { classNoteCategories } from './classNotes';
 import { moreWordCategories } from './moreWords';
 import { verbFormExplanations, verbForms, verbTypes, type VerbForm } from './verbLessons';
 import { intermediateLessons } from './intermediateLessons';
+import { prepositionLessonCategories } from './prepositionLessons';
 
 type Word = { word: string; split: string; tamilSound: string; tamil: string; meaning: string; kind: string; emoji: string; examples: [string, string][] };
-type Category = { id: string; name: string; tamil: string; emoji: string; color: string; section?: 'class-notes'; words: Word[] };
+type Category = { id: string; name: string; tamil: string; emoji: string; color: string; section?: 'class-notes' | 'lesson-notes'; words: Word[] };
 
 const categories: Category[] = [
   { id: 'home', name: 'Home & Family', tamil: 'வீடும் குடும்பமும்', emoji: '🏡', color: '#ef8354', words: [
@@ -119,6 +120,7 @@ const categories: Category[] = [
     { word: 'Must', split: 'Must', tamilSound: 'மஸ்ட்', tamil: 'கட்டாயம் வேண்டும்', meaning: 'Shows that something is necessary or very important.', kind: 'Modal helping verb', emoji: '❗', examples: [['You must be careful.', 'நீங்கள் கட்டாயம் கவனமாக இருக்க வேண்டும்.'], ['We must go now.', 'நாம் இப்போது கட்டாயம் செல்ல வேண்டும்.'], ['I must finish this.', 'நான் இதைக் கட்டாயம் முடிக்க வேண்டும்.']] },
   ]},
   ...classNoteCategories,
+  ...prepositionLessonCategories,
   ...moreWordCategories,
 ];
 
@@ -177,6 +179,7 @@ export default function Home() {
   const totalWords = categories.reduce((sum, item) => sum + item.words.length, 0);
   const everydayCategories = categories.filter((item) => !item.section);
   const classCategories = categories.filter((item) => item.section === 'class-notes');
+  const lessonNoteCategories = categories.filter((item) => item.section === 'lesson-notes');
   const progress = Math.round((learned.length / 500) * 100);
   const learnedInCategory = useMemo(() => category.words.filter((item) => learned.includes(`${category.id}:${item.word}`)).length, [category, learned]);
   void learnedInCategory;
@@ -191,6 +194,7 @@ export default function Home() {
   const openCourseDay = (day: number) => { setCourseDay(day); setView('course-day'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const toggleCourseDay = () => { const next = courseComplete.includes(courseDay) ? courseComplete.filter((day) => day !== courseDay) : [...courseComplete, courseDay]; setCourseComplete(next); localStorage.setItem('vanakkam-course-complete', JSON.stringify(next)); };
   const categoryCard = (item: Category) => { const count = item.words.filter((entry) => learned.includes(`${item.id}:${entry.word}`)).length; return <button className="category-card" style={{ '--accent': item.color } as React.CSSProperties} key={item.id} onClick={() => openCategory(item.id)}><span className="category-emoji">{item.emoji}</span><span className="category-copy"><strong>{item.tamil}</strong><b>{item.name}</b><small>{item.words.length} {item.section ? 'பாடங்கள்' : 'வார்த்தைகள்'} · {count} முடிந்தது</small></span><span className="category-arrow">→</span><span className="category-progress"><i style={{ width: `${(count / item.words.length) * 100}%` }} /></span></button>; };
+  const lessonNoteCard = (item: Category) => { const count = item.words.filter((entry) => learned.includes(`${item.id}:${entry.word}`)).length; return <button className="lesson-category-card" key={item.id} onClick={() => openCategory(item.id)}><span className="lesson-category-icon">{item.emoji}</span><span className="lesson-category-copy"><strong>{item.tamil}</strong><b>{item.name}</b><small>{item.words.length} பாடங்கள் · {count} முடிந்தது · தமிழ் விளக்கம்</small></span><span className="lesson-category-arrow">→</span></button>; };
   const practiceSpeech = () => {
     setSpeechFeedback('கேட்கிறேன்… இப்போது சொல்லுங்கள்');
     const speechWindow = window as typeof window & { webkitSpeechRecognition?: new () => { lang: string; interimResults: boolean; start: () => void; onresult: (event: { results: { 0: { transcript: string } }[] }) => void; onerror: () => void } };
@@ -295,7 +299,7 @@ export default function Home() {
     <section className="progress-strip"><div><span className="progress-icon">🌱</span><p><small>மொத்த முன்னேற்றம்</small><b>{loaded ? learned.length : 0} <span>/ 500 வார்த்தைகள்</span></b></p></div><div className="wide-progress"><i style={{ width: `${progress}%` }} /></div><p className="encouragement">{learned.length ? 'அருமையான முன்னேற்றம்!' : 'முதல் வார்த்தையிலிருந்து தொடங்கலாம்!'}<small>{learned.length ? 'Wonderful progress!' : 'Let’s begin with the first word!'}</small></p></section>
     <section className="categories-section"><div className="section-heading"><div><span className="eyebrow">உங்களுக்கு பிடித்த தலைப்பை தேர்ந்தெடுங்கள்</span><h2>வகைகள் <em>· Categories</em></h2></div><span>{totalWords} பாடங்கள் தயாராக உள்ளன</span></div><div className="category-grid">{everydayCategories.map(categoryCard)}</div></section>
     <section className="categories-section class-notes-section"><div className="section-heading"><div><span className="eyebrow">Google Chat வகுப்பிலிருந்து தொகுக்கப்பட்டது</span><h2>வகுப்பு குறிப்புகள் <em>· Class Notes</em></h2></div><span>{classCategories.reduce((sum, item) => sum + item.words.length, 0)} வகுப்புப் பாடங்கள்</span></div><p className="class-notes-intro">தினசரி வகுப்புக் குறிப்புகள் தலைப்பு வாரியாக ஒழுங்குபடுத்தப்பட்டுள்ளன. ஒவ்வொரு பாடத்தையும் கேட்டு, படித்து, உதாரணங்களுடன் பயிற்சி செய்யுங்கள்.</p><div className="category-grid">{classCategories.map(categoryCard)}</div></section>
-    <section className="categories-section lesson-category-section"><div className="section-heading"><div><span className="eyebrow">இலக்கணத்தை எளிதாகக் கற்போம்</span><h2>பாடங்கள் <em>· Lessons</em></h2></div><span>தமிழ் விளக்கத்துடன்</span></div><p className="class-notes-intro">ஒவ்வொரு நாளும் ஒரு சிறிய பாடமாகப் படித்து, கேட்டு, காணொளியுடன் பேசிப் பழகுங்கள்.</p><div className="lesson-category-list"><button className="lesson-category-card course-category-card" onClick={() => { setView('course'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span className="lesson-category-icon">🌿</span><span className="lesson-category-copy"><strong>30 நாள் ஆங்கிலப் பயிற்சி</strong><b>Intermediate Spoken English</b><small>30 தினசரி பாடங்கள் · YouTube video · தமிழ் விளக்கம் · {courseComplete.length} முடிந்தது</small></span><span className="lesson-category-arrow">→</span></button><button className="lesson-category-card" onClick={() => { setView('verb-lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span className="lesson-category-icon">📚</span><span className="lesson-category-copy"><strong>வினைச்சொல் வடிவங்கள்</strong><b>Verb Forms · V1 to V5</b><small>{verbTypes.length} types · {verbForms.length} verbs · தமிழ் விளக்கம்</small></span><span className="lesson-category-arrow">→</span></button></div></section>
+    <section className="categories-section lesson-category-section"><div className="section-heading"><div><span className="eyebrow">இலக்கணத்தை எளிதாகக் கற்போம்</span><h2>பாடங்கள் <em>· Lessons</em></h2></div><span>தமிழ் விளக்கத்துடன்</span></div><p className="class-notes-intro">ஒவ்வொரு நாளும் ஒரு சிறிய பாடமாகப் படித்து, கேட்டு, காணொளியுடன் பேசிப் பழகுங்கள்.</p><div className="lesson-category-list"><button className="lesson-category-card course-category-card" onClick={() => { setView('course'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span className="lesson-category-icon">🌿</span><span className="lesson-category-copy"><strong>30 நாள் ஆங்கிலப் பயிற்சி</strong><b>Intermediate Spoken English</b><small>30 தினசரி பாடங்கள் · YouTube video · தமிழ் விளக்கம் · {courseComplete.length} முடிந்தது</small></span><span className="lesson-category-arrow">→</span></button><button className="lesson-category-card" onClick={() => { setView('verb-lesson'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span className="lesson-category-icon">📚</span><span className="lesson-category-copy"><strong>வினைச்சொல் வடிவங்கள்</strong><b>Verb Forms · V1 to V5</b><small>{verbTypes.length} types · {verbForms.length} verbs · தமிழ் விளக்கம்</small></span><span className="lesson-category-arrow">→</span></button>{lessonNoteCategories.map(lessonNoteCard)}</div></section>
     <footer><span>வணக்கம் English</span><p>மெதுவாக கற்போம். நம்பிக்கையுடன் பேசுவோம்.</p><small>Learn gently. Speak confidently.</small></footer>
   </main>;
 }
